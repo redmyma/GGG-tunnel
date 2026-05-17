@@ -58,32 +58,25 @@ jobs:
           
           echo "cs_name=$CS_NAME" >> $GITHUB_OUTPUT
 
-      - name: Settle down environment
+      - name: Wait for codespace initialization
         run: |
-          echo "Waiting 60 seconds for container startup..."
-          sleep 60
+          echo "Waiting 90 seconds for creation logs to complete..."
+          sleep 90
 
-      - name: Public 443 Port
+      - name: Read Creation Log via SSH
         run: |
           CS="${{ steps.create_cs.outputs.cs_name }}"
-          echo "Setting port 443 to public..."
-          gh codespace ports visibility 443:public -c "$CS" || true
-
-      - name: Capture Config Output
-        run: |
-          CS="${{ steps.create_cs.outputs.cs_name }}"
-          echo "Connecting via SSH and executing print script..."
+          echo "Connecting to read the container terminal output..."
           
-          gh codespace ssh -c "$CS" -- "/usr/local/bin/print-configs.sh" > terminal_full_output.log 2>&1 || true
-          
-          echo "=== CAPTURED LOG PREVIEW ==="
-          cat terminal_full_output.log
+          gh codespace ssh -c "$CS" -- cat /workspaces/.codespaces/.proxy/vscodeserver/creation.log > terminal_full_output.log 2>&1 || true
 
       - name: Extract config
         run: |
           if grep -q "G-Tunnel GAMING CONFIGS" terminal_full_output.log; then
+            echo "Target config found in terminal log! Extracting..."
             sed -n '/G-Tunnel GAMING CONFIGS/,$p' terminal_full_output.log > Config.txt
           else
+            echo "Target pattern not found in creation log. Copying full terminal log for inspection."
             cat terminal_full_output.log > Config.txt
           fi
 
