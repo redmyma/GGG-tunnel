@@ -92,16 +92,35 @@ jobs:
             exit 1
           fi
           
-          echo "Connecting via SSH to trigger lifecycle events..."
-          
-          gh codespace ssh -c "$CS" -- bash -c '
-            echo "=== TRIGGERING INTERNAL SCRIPTS ==="
-            sleep 10
-            echo "=== CHECKING XRAY LOGS AS BACKUP ==="
-            if [ -f "/tmp/xray.log" ]; then
-              cat /tmp/xray.log | tail -n 20
+          echo "Generating verification script inside runner..."
+          cat > remote_script.sh << 'EOF'
+          echo "=== CHECKING XRAY STATUS ==="
+          XRAY_RUNNING=false
+          for i in {1..10}; do
+            if pgrep -x "xray" >/dev/null; then
+              echo "✅ Xray Core detected and running successfully!"
+              XRAY_RUNNING=true
+              break
             fi
-          ' 2>&1 | tee terminal_full_output.log
+            echo "Waiting for Xray to start... (Attempt $i/10)"
+            sleep 5
+          done
+
+          if [ "$XRAY_RUNNING" = true ]; then
+            if [ -x "/usr/local/bin/print-configs.sh" ]; then
+              /usr/local/bin/print-configs.sh
+            else
+              echo "Error: print-configs.sh found but not executable or missing."
+            fi
+          else
+            echo "❌ Error: Xray Core failed to start within time limit."
+            echo "=== XRAY DEBUG LOGS ==="
+            cat /tmp/xray.log 2>/dev/null || echo "No Xray log file found."
+          fi
+          EOF
+
+          echo "Copying script and executing securely inside codespace..."
+          gh codespace ssh -c "$CS" -- bash -s < remote_script.sh 2>&1 | tee terminal_full_output.log
 
       - name: Extract config
         run: |
