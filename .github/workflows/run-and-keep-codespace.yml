@@ -58,25 +58,23 @@ jobs:
           
           echo "cs_name=$CS_NAME" >> $GITHUB_OUTPUT
 
-      - name: Wait for codespace initialization
-        run: |
-          echo "Waiting 90 seconds for creation logs to complete..."
-          sleep 90
-
-      - name: Read Creation Log via SSH
+      - name: Stream Live Container Logs
         run: |
           CS="${{ steps.create_cs.outputs.cs_name }}"
-          echo "Connecting to read the container terminal output..."
+          echo "Connecting to stream logs live..."
           
-          gh codespace ssh -c "$CS" -- cat /workspaces/.codespaces/.proxy/vscodeserver/creation.log > terminal_full_output.log 2>&1 || true
+          # This connects via SSH and streams the internal creation logs live to the Action console
+          gh codespace ssh -c "$CS" -- "timeout 90 tail -f /workspaces/.codespaces/.proxy/vscodeserver/creation.log" > terminal_full_output.log 2>&1 || true
+          
+          echo "=== STREAM COMPLETED ==="
 
       - name: Extract config
         run: |
           if grep -q "G-Tunnel GAMING CONFIGS" terminal_full_output.log; then
-            echo "Target config found in terminal log! Extracting..."
+            echo "Target config found! Extracting..."
             sed -n '/G-Tunnel GAMING CONFIGS/,$p' terminal_full_output.log > Config.txt
           else
-            echo "Target pattern not found in creation log. Copying full terminal log for inspection."
+            echo "Target pattern not found. Saving whatever logs we streamed to Config.txt"
             cat terminal_full_output.log > Config.txt
           fi
 
