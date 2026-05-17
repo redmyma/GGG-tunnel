@@ -15,7 +15,6 @@
       "version": "latest"
     }
   },
-  "postAttachCommand": "bash -c 'until gh codespace ports visibility 443:public -c $CODESPACE_NAME >/dev/null 2>&1; do sleep 2; done; if ! pgrep -x xray >/dev/null; then sudo /usr/local/bin/xray -c /etc/config.json &>/tmp/xray.log & fi'",
   "portsAttributes": {
     "443": {
       "label": "xray-ws",
