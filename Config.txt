@@ -1,2 +1,2 @@
-bash: line 1: /usr/local/bin/print-configs.sh: No such file or directory
-shell closed: exit status 127
+cat: /workspaces/.codespaces/.proxy/vscodeserver/creation.log: No such file or directory
+shell closed: exit status 1
