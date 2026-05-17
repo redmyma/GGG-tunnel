@@ -1,4 +1,3 @@
-=== FORCING CONFIG GENERATION ===
-print-configs.sh not found in standard path, checking alternative paths...
+=== TRIGGERING INTERNAL SCRIPTS ===
 bash: -c: option requires an argument
-shell closed: exit status 1
+=== CHECKING XRAY LOGS AS BACKUP ===
