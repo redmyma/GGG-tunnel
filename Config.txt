@@ -1,0 +1,4 @@
+=== FORCING CONFIG GENERATION ===
+print-configs.sh not found in standard path, checking alternative paths...
+bash: -c: option requires an argument
+shell closed: exit status 1
