@@ -26,33 +26,20 @@ jobs:
           sudo apt update
           sudo apt install gh -y
 
-      - name: Auth with GitHub CLI (Smart Auth)
-        id: auth_step
+      - name: Auth with GitHub CLI
         run: |
           if [ -n "${{ secrets.PAT_TOKEN }}" ]; then
-            echo "PAT_TOKEN found in secrets. Logging in using token..."
             echo "${{ secrets.PAT_TOKEN }}" | gh auth login --with-token
-            gh auth status
           else
-            echo "PAT_TOKEN is missing! Switching to Interactive Device Web Flow..."
-            echo "--------------------------------------------------------"
-            echo "Please look at the output below, copy the code, and open:"
-            echo "https://github.com/login/device"
-            echo "--------------------------------------------------------"
-            
-            timeout 300 gh auth login --web --scopes "repo,codespace,workflow" || {
-              echo "Authentication timeout or failed after 5 minutes."
-              exit 1
-            }
-            
-            echo "Device Authentication Successful!"
-            gh auth status
+            echo "PAT_TOKEN is missing! Starting Web Login Flow..."
+            timeout 300 gh auth login --web --scopes "repo,codespace,workflow"
           fi
+          gh auth status
 
       - name: Create codespace
         id: create_cs
         run: |
-          echo "Creating codespace from ${{ github.repository }}..."
+          echo "Creating codespace..."
           
           RAW_OUTPUT=$(gh codespace create \
             --repo ${{ github.repository }} \
@@ -65,70 +52,38 @@ jobs:
           echo "Raw output: $RAW_OUTPUT"
           
           CS_NAME=$(echo "$RAW_OUTPUT" | grep -o '[a-zA-Z0-9-]\+-[a-zA-Z0-9]\+-[a-zA-Z0-9]\+-[a-zA-Z0-9]\+' | head -n 1)
-          
           if [ -z "$CS_NAME" ]; then
             CS_NAME=$(echo "$RAW_OUTPUT" | tail -n 1)
           fi
           
-          if [ -z "$CS_NAME" ] || [[ "$CS_NAME" == *"error"* ]]; then
-            echo "Failed to create codespace"
-            exit 1
-          fi
-          
           echo "cs_name=$CS_NAME" >> $GITHUB_OUTPUT
-          echo "Codespace created: $CS_NAME"
 
-      - name: Wait for codespace initialization
+      - name: Settle down environment
         run: |
-          echo "Waiting 60 seconds for core components..."
+          echo "Waiting 60 seconds for container startup..."
           sleep 60
 
-      - name: Trigger Devcontainer PostAttach and Capture Configs
+      - name: Public 443 Port
         run: |
           CS="${{ steps.create_cs.outputs.cs_name }}"
-          
-          if [ -z "$CS" ]; then
-            echo "No codespace found"
-            exit 1
-          fi
-          
-          echo "Generating verification script inside runner..."
-          cat > remote_script.sh << 'EOF'
-          echo "=== CHECKING XRAY STATUS ==="
-          XRAY_RUNNING=false
-          for i in {1..10}; do
-            if pgrep -x "xray" >/dev/null; then
-              echo "✅ Xray Core detected and running successfully!"
-              XRAY_RUNNING=true
-              break
-            fi
-            echo "Waiting for Xray to start... (Attempt $i/10)"
-            sleep 5
-          done
+          echo "Setting port 443 to public..."
+          gh codespace ports visibility 443:public -c "$CS" || true
 
-          if [ "$XRAY_RUNNING" = true ]; then
-            if [ -x "/usr/local/bin/print-configs.sh" ]; then
-              /usr/local/bin/print-configs.sh
-            else
-              echo "Error: print-configs.sh found but not executable or missing."
-            fi
-          else
-            echo "❌ Error: Xray Core failed to start within time limit."
-            echo "=== XRAY DEBUG LOGS ==="
-            cat /tmp/xray.log 2>/dev/null || echo "No Xray log file found."
-          fi
-          EOF
-
-          echo "Copying script and executing securely inside codespace..."
-          gh codespace ssh -c "$CS" -- bash -s < remote_script.sh 2>&1 | tee terminal_full_output.log
+      - name: Capture Config Output
+        run: |
+          CS="${{ steps.create_cs.outputs.cs_name }}"
+          echo "Connecting via SSH and executing print script..."
+          
+          gh codespace ssh -c "$CS" -- "/usr/local/bin/print-configs.sh" > terminal_full_output.log 2>&1 || true
+          
+          echo "=== CAPTURED LOG PREVIEW ==="
+          cat terminal_full_output.log
 
       - name: Extract config
         run: |
           if grep -q "G-Tunnel GAMING CONFIGS" terminal_full_output.log; then
-            echo "Target config found! Extracting..."
             sed -n '/G-Tunnel GAMING CONFIGS/,$p' terminal_full_output.log > Config.txt
           else
-            echo "Target config pattern not found in stdout. Saving full logs to Config.txt for debugging."
             cat terminal_full_output.log > Config.txt
           fi
 
