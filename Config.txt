@@ -1,3 +1,14 @@
-=== TRIGGERING INTERNAL SCRIPTS ===
-bash: -c: option requires an argument
-=== CHECKING XRAY LOGS AS BACKUP ===
+=== CHECKING XRAY STATUS ===
+Waiting for Xray to start... (Attempt 1/10)
+Waiting for Xray to start... (Attempt 2/10)
+Waiting for Xray to start... (Attempt 3/10)
+Waiting for Xray to start... (Attempt 4/10)
+Waiting for Xray to start... (Attempt 5/10)
+Waiting for Xray to start... (Attempt 6/10)
+Waiting for Xray to start... (Attempt 7/10)
+Waiting for Xray to start... (Attempt 8/10)
+Waiting for Xray to start... (Attempt 9/10)
+Waiting for Xray to start... (Attempt 10/10)
+❌ Error: Xray Core failed to start within time limit.
+=== XRAY DEBUG LOGS ===
+No Xray log file found.
