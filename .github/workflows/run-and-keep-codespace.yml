@@ -80,10 +80,10 @@ jobs:
 
       - name: Wait for codespace initialization
         run: |
-          echo "Waiting 90 seconds for devcontainer features to boot up..."
-          sleep 90
+          echo "Waiting 60 seconds for core components..."
+          sleep 60
 
-      - name: Trigger postAttachCommand and Capture Output
+      - name: Trigger Devcontainer PostAttach and Capture Configs
         run: |
           CS="${{ steps.create_cs.outputs.cs_name }}"
           
@@ -92,15 +92,14 @@ jobs:
             exit 1
           fi
           
-          echo "Connecting via SSH to trigger attach lifecycle and app scripts..."
+          echo "Connecting via SSH to trigger lifecycle events..."
           
           gh codespace ssh -c "$CS" -- bash -c '
-            echo "=== FORCING CONFIG GENERATION ==="
-            if [ -f "/usr/local/bin/print-configs.sh" ]; then
-              /usr/local/bin/print-configs.sh
-            else
-              echo "print-configs.sh not found in standard path, checking alternative paths..."
-              find / -name "print-configs.sh" -exec {} \; 2>/dev/null
+            echo "=== TRIGGERING INTERNAL SCRIPTS ==="
+            sleep 10
+            echo "=== CHECKING XRAY LOGS AS BACKUP ==="
+            if [ -f "/tmp/xray.log" ]; then
+              cat /tmp/xray.log | tail -n 20
             fi
           ' 2>&1 | tee terminal_full_output.log
 
